@@ -1,0 +1,162 @@
+  APPLICATION SUPPORT ACTIVITY TRACKER
+  Laravel 11 | PHP 8.2 | SQLite
+  Author: Desmond Opoku Anane
+
+WHAT THIS IS
+------------
+A full-stack web application built in Laravel that lets an Application Support
+Team log daily activities, update their status, capture who did what and when,
+view a daily handover board, and query historical reports by date range.
+
+TECH STACK
+----------
+  Framework : Laravel 11
+  Language  : PHP 8.2
+  Database  : SQLite (zero configuration, one file, no server needed)
+  Frontend  : Laravel Blade + Tailwind CSS (loaded via CDN, no npm needed)
+  Auth      : Laravel session-based authentication (built-in)
+
+DATABASE TABLES
+  users              : id, name, email, hashed_password, department, phone,
+                       role (admin|support), timestamps
+  activities         : id, title, description, category, created_by (users),
+                       timestamps
+  activity_updates   : id, activity_id (activities), updated_by (users),
+                       status (done|pending), remark, updated_at
+
+  NOTE: The database is a single file at database/database.sqlite
+        It is auto-created by the setup steps below.
+
+HOW TO RUN
+
+REQUIREMENTS (install these first if you don't have them)
+  PHP 8.2+    https://www.php.net/downloads  (Windows: download the zip,
+              extract to C:\php, add C:\php to your system PATH)
+  Composer    https://getcomposer.org/download (run the Windows installer)
+
+CHECK THEY WORK - open a terminal and run:
+  php --version        (should say PHP 8.2.x)
+  composer --version   (should say Composer version 2.x)
+
+SETUP STEPS (run these one at a time in a terminal inside this folder)
+
+STEP 1 - Install PHP packages
+  composer install
+
+STEP 2 - Create the environment file
+  copy .env.example .env          (Windows)
+  cp .env.example .env            (Mac / Linux)
+
+STEP 3 - Generate the application key
+  php artisan key:generate
+
+STEP 4 - Create the SQLite database file
+  type nul > database\database.sqlite     (Windows CMD)
+  New-Item database\database.sqlite       (Windows PowerShell)
+  touch database/database.sqlite          (Mac / Linux)
+
+STEP 5 - Run the database migrations (creates all tables)
+  php artisan migrate
+
+STEP 6 - Start the development server
+  php artisan serve
+
+STEP 7 - Open the app in your browser
+  http://127.0.0.1:8000
+
+FIRST TIME USE
+
+1. Go to http://127.0.0.1:8000/register
+2. Fill in your details:
+     Name, Email, Password (min 6 chars), Department, Phone, Role
+     Role "Administrator" can delete any activity
+     Role "Support Staff" can only delete their own activities
+3. Click "Create Account" and you are logged in automatically
+4. You land on the Daily Activity View (Dashboard)
+
+USING THE APP
+
+DAILY VIEW (Dashboard)
+  - A date picker at the top lets you view any day (defaults to today)
+  - Stats bar shows Total / Done / Pending counts at a glance
+  - Click "+ Add Activity" to log a new activity:
+      Title   : choose from the dropdown (or select "Other" and type your own)
+      Category: choose from the dropdown (or select "Other" and type your own)
+      Description: optional free text
+  - Each activity card shows its current status (green = Done, yellow = Pending)
+  - Click "Update" on any card to open the update modal:
+      Click the Done or Pending button
+      Type a remark explaining what was done or why it is pending
+      Click "Save Update"
+  - Click "Show history (N)" to expand the full update trail:
+      Every past update is listed with the updater's name, department,
+      status, remark, and exact timestamp. This is the handover view.
+
+REPORTS
+  - Click "Reports" in the navbar
+  - Use the quick preset buttons: Today / Last 7 days / Last 30 days
+  - Or pick any custom From and To date range and click "Search"
+  - All matching activities appear with their full update history
+
+FILE STRUCTURE
+
+assignment_task/
+|-- app/
+|   |-- Http/Controllers/
+|   |   |-- AuthController.php           Login, Register, Logout
+|   |   |-- ActivityController.php       Daily view, Create, Delete
+|   |   |-- ActivityUpdateController.php Save status updates with remark
+|   |   +-- ReportController.php         Date-range history query
+|   +-- Models/
+|       |-- User.php                     Extended with department, phone, role
+|       |-- Activity.php                 Relationships: creator, updates
+|       +-- ActivityUpdate.php           Immutable update record
+|-- database/
+|   |-- migrations/
+|   |   |-- ..._create_users_table.php
+|   |   |-- ..._add_fields_to_users_table.php
+|   |   |-- ..._create_activities_table.php
+|   |   +-- ..._create_activity_updates_table.php
+|   +-- database.sqlite                  Auto-created SQLite file
+|-- resources/views/
+|   |-- layouts/app.blade.php            Shared navbar, flash messages
+|   |-- auth/login.blade.php             Sign-in page
+|   |-- auth/register.blade.php          Registration page
+|   |-- dashboard.blade.php              Daily activity view
+|   +-- reports.blade.php                Date-range report view
+|-- routes/
+|   +-- web.php                          All application routes
+|-- .env                                 Environment config (DB, app key)
++-- HOW_TO_RUN.txt                       This file
+
+ASSIGNMENT REQUIREMENTS AND WHERE EACH IS IMPLEMENTED
+
+1. Log activities (e.g. "Daily SMS count vs SMS count from logs")
+   Dashboard "Add Activity" form. Title is a dropdown of 12 predefined
+   support tasks plus "Other (specify)" option. Category dropdown too.
+   Controller: ActivityController@store | View: dashboard.blade.php
+
+2. Update status (done/pending) + remark for each activity
+   Each activity card has an "Update" button opening a modal.
+   Large Done/Pending toggle buttons plus remark textarea.
+   Controller: ActivityUpdateController@store | View: dashboard.blade.php
+
+3. Capture bio details of the updater and time of update
+   updated_by is captured from the logged-in session (Auth::id()).
+   updated_at is set to now(). History shows name, department, timestamp.
+   Model: ActivityUpdate | Controller: ActivityUpdateController@store
+
+4. Daily view showing all activities, updates, and handover visibility
+   Dashboard filtered by date (default today). Collapsible history on
+   each card shows every update ever made: who, when, status, remark.
+   Controller: ActivityController@index | View: dashboard.blade.php
+
+5. Reporting view for querying by custom duration
+   Reports page with From/To date pickers and quick presets.
+   All activities in the range shown with full update history.
+   Controller: ReportController@index | View: reports.blade.php
+
+6. User authentication before access is granted
+   All routes (except /login and /register) protected by auth middleware.
+   Unauthenticated users are redirected to /login automatically.
+   routes/web.php | AuthController | Laravel built-in auth guards
